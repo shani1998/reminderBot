@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/golang/glog"
-	"github.com/turnage/graw"
 	"github.com/turnage/graw/reddit"
 	"strings"
 	"time"
@@ -27,31 +26,42 @@ func (r *reminderBot) Post(p *reddit.Post) error {
 }
 
 func main() {
-	if bot, err := reddit.NewBotFromAgentFile("reminderbot.agent", 0); err != nil {
-		glog.Infof("Failed to create bot handle: ", err)
-	} else {
-		cfg := graw.Config{Subreddits: []string{"bottesting"}}
-		handler := &reminderBot{bot: bot}
-		if _, wait, err := graw.Run(handler, bot, cfg); err != nil {
-			glog.Infof("Failed to start graw run: ", err)
-		} else {
-			glog.Infof("graw run failed: ", wait())
-		}
+	cfg := reddit.BotConfig{
+		Agent: "graw:doc_demo_bot:0.3.1 by /u/skp1998",
+		App: reddit.App{
+			ID:     "0VpLcglAwwG_cg",
+			Secret: "FQTn77zAMeMN67Bi8h4ooFVqs18",
+			Username: "skp1998",
+			Password: "reddit@123",
+		},
 	}
+	bot, _ := reddit.NewBot(cfg)
 
-	bot, err := reddit.NewBotFromAgentFile("reminderbot.agent", 0)
-	if err != nil {
-		fmt.Println("Failed to create bot handle: ", err)
-		return
-	}
-
+	//list top post from golang group and send message
 	harvest, err := bot.Listing("/r/golang", "")
 	if err != nil {
 		fmt.Println("Failed to fetch /r/golang: ", err)
 		return
 	}
 
-	for _, post := range harvest.Posts[:5] {
-		fmt.Printf("[%s] posted [%s]\n", post.Author, post.Title)
+	//construct a max heap and fetch top five posts
+	var topFivePosts []*reddit.Post
+	h := BuildMaxHeap(harvest.Posts)
+	topFivePosts=append(topFivePosts,h.post[0])
+	glog.Infof("user:%v, Title:%v, Ups: %v",h.post[0].Author,h.post[0].Title,h.post[0].Ups)
+	for i := 1; i <5; i++ {
+		h = BuildMaxHeap(h.post[i:])
+		glog.Infof("Id:%v, Title:%v, Ups: %v",h.post[0].Author,h.post[0].Title,h.post[0].Ups)
 	}
+
+	//for _, post := range harvest.Posts  {
+	//
+	//	fmt.Printf("[%s] posted [%s]\n", post.Author, post.Title)
+	//}
+
+	//send message to a user inbox on reddit
+	//err = bot.SendMessage("skp1998", "Thanks for making this Reddit API! Mr. Shani", "It's ok.")
+	//if err != nil {
+	//	glog.Infof("error while sending message to user skp1998 %v",err)
+	//}
 }
